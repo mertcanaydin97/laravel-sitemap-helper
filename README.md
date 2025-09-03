@@ -22,8 +22,16 @@ A powerful Laravel package to generate XML sitemaps with SEO-friendly URLs, mode
 ### **Laravel Package Installation**
 1. Download `SitemapHelper.php` to your Laravel project
 2. Place in `app/Helpers/` directory following Laravel structure
-3. Include where needed: `require_once base_path('app/Helpers/SitemapHelper.php');`
-4. **Ready to use!** No composer autoload required
+3. Add to `composer.json` autoload section:
+   ```json
+   "autoload": {
+       "psr-4": {
+           "App\\": "app/"
+       }
+   }
+   ```
+4. Run `composer dump-autoload`
+5. **Ready to use!** Use proper Laravel `use` statements
 
 ## 🎯 Quick Start
 
@@ -31,9 +39,9 @@ A powerful Laravel package to generate XML sitemaps with SEO-friendly URLs, mode
 ```php
 <?php
 // routes/web.php
+use App\Helpers\SitemapHelper;
+
 Route::get('/sitemap.xml', function () {
-    require_once base_path('app/Helpers/SitemapHelper.php');
-    
     return SitemapHelper::quickGenerate([
         ['model' => App\Models\Post::class, 'route' => 'posts.show', 'change_freq' => 'weekly', 'priority' => 0.8, 'slug_column' => 'slug'],
         ['model' => App\Models\Product::class, 'route' => 'products.show', 'change_freq' => 'daily', 'priority' => 0.9, 'slug_column' => 'slug'],
@@ -51,6 +59,7 @@ Route::get('/sitemap.xml', function () {
 // app/Http/Controllers/SitemapController.php
 namespace App\Http\Controllers;
 
+use App\Helpers\SitemapHelper;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -58,9 +67,7 @@ class SitemapController extends Controller
 {
     public function generate(): Response
     {
-        require_once base_path('app/Helpers/SitemapHelper.php');
-        
-        $sitemap = new \SitemapHelper();
+        $sitemap = new SitemapHelper();
         
         // Add static pages using Laravel named routes
         $sitemap->addStaticPages([
@@ -85,6 +92,7 @@ class SitemapController extends Controller
 // app/Console/Commands/GenerateSitemap.php
 namespace App\Console\Commands;
 
+use App\Helpers\SitemapHelper;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
@@ -95,9 +103,7 @@ class GenerateSitemap extends Command
 
     public function handle(): int
     {
-        require_once base_path('app/Helpers/SitemapHelper.php');
-        
-        $sitemap = \SitemapHelper::quickGenerate([
+        $sitemap = SitemapHelper::quickGenerate([
             ['model' => App\Models\Post::class, 'route' => 'posts.show', 'change_freq' => 'weekly', 'priority' => 0.8, 'slug_column' => 'slug'],
         ], [
             ['url' => route('home'), 'priority' => 1.0, 'change_freq' => 'daily'],
@@ -119,6 +125,7 @@ class GenerateSitemap extends Command
 // app/Console/Kernel.php
 namespace App\Console;
 
+use App\Helpers\SitemapHelper;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -127,9 +134,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->call(function () {
-            require_once base_path('app/Helpers/SitemapHelper.php');
-            
-            $sitemap = \SitemapHelper::quickGenerate([
+            $sitemap = SitemapHelper::quickGenerate([
                 ['model' => App\Models\Post::class, 'route' => 'posts.show', 'change_freq' => 'weekly', 'priority' => 0.8, 'slug_column' => 'slug'],
                 ['model' => App\Models\Product::class, 'route' => 'products.show', 'change_freq' => 'daily', 'priority' => 0.9, 'slug_column' => 'slug'],
             ], [
@@ -151,6 +156,7 @@ class Kernel extends ConsoleKernel
 // app/Http/Controllers/SitemapController.php
 namespace App\Http\Controllers;
 
+use App\Helpers\SitemapHelper;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Brand;
@@ -160,9 +166,7 @@ class SitemapController extends Controller
 {
     public function generate()
     {
-        require_once base_path('app/Helpers/SitemapHelper.php');
-        
-        $sitemap = \SitemapHelper::quickGenerate([
+        $sitemap = SitemapHelper::quickGenerate([
             // Eloquent models with slug columns
             ['model' => Product::class, 'route' => 'products.show', 'change_freq' => 'daily', 'priority' => 0.9, 'slug_column' => 'slug'],
             ['model' => Category::class, 'route' => 'categories.show', 'change_freq' => 'weekly', 'priority' => 0.7, 'slug_column' => 'slug'],
@@ -190,6 +194,7 @@ class SitemapController extends Controller
 // app/Http/Controllers/SitemapController.php
 namespace App\Http\Controllers;
 
+use App\Helpers\SitemapHelper;
 use App\Models\Post;
 use App\Models\Category;
 use App\Models\Tag;
@@ -198,9 +203,7 @@ class SitemapController extends Controller
 {
     public function generate()
     {
-        require_once base_path('app/Helpers/SitemapHelper.php');
-        
-        $sitemap = new \SitemapHelper();
+        $sitemap = new SitemapHelper();
         
         // Static pages using Laravel named routes
         $sitemap->addStaticPages([
@@ -233,13 +236,13 @@ class SitemapController extends Controller
 // app/Http/Controllers/SitemapController.php
 namespace App\Http\Controllers;
 
+use App\Helpers\SitemapHelper;
+
 class SitemapController extends Controller
 {
     public function generate()
     {
-        require_once base_path('app/Helpers/SitemapHelper.php');
-        
-        $sitemap = new \SitemapHelper();
+        $sitemap = new SitemapHelper();
         
         // Set custom defaults
         $sitemap->setDefaultPriority(0.7);
@@ -396,6 +399,7 @@ your-laravel-project/
 │           └── GenerateSitemap.php
 ├── routes/
 │   └── web.php                  # Sitemap route definition
+├── composer.json                 # Autoload configuration
 ├── usage-example.php            # Usage examples
 ├── simple-test.php              # Test runner
 ├── README.md                    # This documentation
@@ -411,6 +415,7 @@ your-laravel-project/
 // app/Providers/AppServiceProvider.php
 namespace App\Providers;
 
+use App\Helpers\SitemapHelper;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -418,9 +423,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if (app()->environment('production')) {
-            require_once base_path('app/Helpers/SitemapHelper.php');
-            
-            $sitemap = \SitemapHelper::quickGenerate([
+            $sitemap = SitemapHelper::quickGenerate([
                 // Production Eloquent models...
             ], [
                 // Production Laravel routes...
@@ -436,18 +439,18 @@ class AppServiceProvider extends ServiceProvider
 ```php
 <?php
 // Generate separate sitemaps for different sections
-$postsSitemap = \SitemapHelper::quickGenerate([
+$postsSitemap = SitemapHelper::quickGenerate([
     ['model' => Post::class, 'route' => 'posts.show', 'change_freq' => 'weekly', 'priority' => 0.8, 'slug_column' => 'slug'],
 ], []);
 $postsSitemap->save(public_path('sitemap-posts.xml'));
 
-$productsSitemap = \SitemapHelper::quickGenerate([
+$productsSitemap = SitemapHelper::quickGenerate([
     ['model' => Product::class, 'route' => 'products.show', 'change_freq' => 'daily', 'priority' => 0.9, 'slug_column' => 'slug'],
 ], []);
 $productsSitemap->save(public_path('sitemap-products.xml'));
 
 // Generate sitemap index using Laravel URL helper
-$indexSitemap = new \SitemapHelper();
+$indexSitemap = new SitemapHelper();
 $index = $indexSitemap->generateIndex([
     url('sitemap-posts.xml'),
     url('sitemap-products.xml'),
@@ -460,9 +463,7 @@ file_put_contents(public_path('sitemap-index.xml'), $index);
 <?php
 // Cache sitemap generation for performance
 $sitemap = Cache::remember('sitemap', 3600, function () {
-    require_once base_path('app/Helpers/SitemapHelper.php');
-    
-    return \SitemapHelper::quickGenerate([
+    return SitemapHelper::quickGenerate([
         // Your Eloquent models...
     ], [
         // Your Laravel routes...
@@ -478,6 +479,7 @@ return response($sitemap, 200, ['Content-Type' => 'application/xml']);
 // app/Jobs/GenerateSitemapJob.php
 namespace App\Jobs;
 
+use App\Helpers\SitemapHelper;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -490,9 +492,7 @@ class GenerateSitemapJob implements ShouldQueue
 
     public function handle(): void
     {
-        require_once base_path('app/Helpers/SitemapHelper.php');
-        
-        $sitemap = \SitemapHelper::quickGenerate([
+        $sitemap = SitemapHelper::quickGenerate([
             // Your Eloquent models...
         ], [
             // Your Laravel routes...
@@ -508,6 +508,7 @@ GenerateSitemapJob::dispatch();
 
 ## 🌟 Laravel Best Practices
 
+- **Use proper Laravel autoloading** with `composer dump-autoload`
 - **Use Eloquent model classes** instead of string names
 - **Use Laravel named routes** with `route()` helper
 - **Use Laravel file system helpers** like `public_path()`
@@ -521,7 +522,7 @@ GenerateSitemapJob::dispatch();
 
 - **PHP 8.0+** (for modern Laravel compatibility)
 - **Laravel 9+** (required for full functionality)
-- **No external packages** required
+- **Composer** (for proper autoloading)
 
 ## 🤝 Contributing
 
@@ -547,6 +548,8 @@ Your Laravel Sitemap Helper is ready to use! Simply:
 
 1. **Download** `SitemapHelper.php`
 2. **Place** in your Laravel `app/Helpers/` directory
-3. **Include** where needed and start generating sitemaps
+3. **Configure** autoloading in `composer.json`
+4. **Run** `composer dump-autoload`
+5. **Use** proper Laravel `use` statements
 
-**Built following Laravel conventions - no composer autoload required!** 🚀
+**Built following Laravel conventions with proper autoloading!** 🚀
