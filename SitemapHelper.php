@@ -1,503 +1,421 @@
 <?php
 
-namespace App\Helpers;
+/**
+ * Laravel Sitemap Helper - Standalone Version
+ * 
+ * A simple, powerful helper to generate XML sitemaps for your Laravel website.
+ * This version can be used without composer dump-autoload.
+ * 
+ * Features:
+ * - Generate XML sitemaps with SEO-friendly URLs
+ * - Support for model collections with slug columns
+ * - Static pages and routes
+ * - Comprehensive testing included
+ * 
+ * @author Mertcan Aydın
+ * @version 1.0.0
+ * @license MIT
+ */
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\URL;
-use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
-
-class SitemapHelper
-{
-    /**
-     * The base URL for the sitemap
-     */
-    protected string $baseUrl;
-
-    /**
-     * Array of URLs to include in the sitemap
-     */
-    protected array $urls = [];
-
-    /**
-     * Array of excluded routes/patterns
-     */
-    protected array $excludedRoutes = [];
-
-    /**
-     * Default priority for URLs
-     */
-    protected float $defaultPriority = 0.5;
-
-    /**
-     * Default change frequency
-     */
-    protected string $defaultChangeFreq = 'weekly';
-
-    /**
-     * Constructor
-     */
-    public function __construct(string $baseUrl = null)
+if (!class_exists('SitemapHelper')) {
+    class SitemapHelper
     {
-        $this->baseUrl = $baseUrl ?? config('app.url');
-        $this->excludedRoutes = [
-            'admin/*',
-            'api/*',
-            'auth/*',
-            'password/*',
-            'email/*',
-            'verification/*',
-            'sanctum/*',
-            'telescope/*',
-            'horizon/*',
-            'log-viewer/*',
-            'debugbar/*',
-            'broadcasting/*',
-            'oauth/*',
-            'socialite/*',
+        protected array $urls = [];
+        protected array $excludedRoutes = [
+            'admin/*', 'api/*', 'auth/*', 'password/*', 'email/*', 
+            'verification/*', 'sanctum/*', 'telescope/*', 'horizon/*', 
+            'log-viewer/*', 'debugbar/*', 'broadcasting/*', 'oauth/*', 'socialite/*'
         ];
-    }
+        protected float $defaultPriority = 0.5;
+        protected string $defaultChangeFreq = 'monthly';
 
-    /**
-     * Add a single URL to the sitemap
-     */
-    public function addUrl(
-        string $url,
-        string $lastModified = null,
-        string $changeFreq = null,
-        float $priority = null
-    ): self {
-        $this->urls[] = [
-            'url' => $this->normalizeUrl($url),
-            'last_modified' => $lastModified ?? now()->toISOString(),
-            'change_freq' => $changeFreq ?? $this->defaultChangeFreq,
-            'priority' => $priority ?? $this->defaultPriority,
-        ];
-
-        return $this;
-    }
-
-    /**
-     * Add multiple URLs at once
-     */
-    public function addUrls(array $urls): self
-    {
-        foreach ($urls as $url) {
-            if (is_string($url)) {
-                $this->addUrl($url);
-            } elseif (is_array($url)) {
-                $this->addUrl(
-                    $url['url'] ?? '',
-                    $url['last_modified'] ?? null,
-                    $url['change_freq'] ?? null,
-                    $url['priority'] ?? null
-                );
-            }
+        /**
+         * Create a new SitemapHelper instance
+         */
+        public function __construct()
+        {
+            // Initialize with default settings
         }
 
-        return $this;
-    }
-
-    /**
-     * Add all public routes to the sitemap
-     */
-    public function addRoutes(array $excludedRoutes = []): self
-    {
-        $excludedRoutes = array_merge($this->excludedRoutes, $excludedRoutes);
-        
-        $routes = Route::getRoutes();
-        
-        foreach ($routes as $route) {
-            if ($this->shouldIncludeRoute($route, $excludedRoutes)) {
-                $this->addUrl($route->uri());
-            }
+        /**
+         * Create a default SitemapHelper instance
+         */
+        public static function createDefault(): self
+        {
+            return new self();
         }
 
-        return $this;
-    }
+        /**
+         * Quick generate method for one-liner usage
+         */
+        public static function quickGenerate(array $models = [], array $staticPages = []): self
+        {
+            $helper = new self();
 
-    /**
-     * Add static pages
-     */
-    public function addStaticPages(array $pages): self
-    {
-        foreach ($pages as $page) {
-            if (is_string($page)) {
-                $this->addUrl($page);
-            } elseif (is_array($page)) {
+            // Add static pages
+            if (!empty($staticPages)) {
+                $helper->addStaticPages($staticPages);
+            }
+
+            // Add model collections
+            if (!empty($models)) {
+                $helper->addModelCollections($models);
+            }
+
+            // Add public routes
+            $helper->addRoutes();
+
+            return $helper;
+        }
+
+        /**
+         * Add a single URL to the sitemap
+         */
+        public function addUrl(string $url, ?string $lastmod = null, string $changeFreq = null, float $priority = null): self
+        {
+            $this->urls[] = [
+                'url' => $this->normalizeUrl($url),
+                'lastmod' => $lastmod,
+                'change_freq' => $changeFreq ?? $this->defaultChangeFreq,
+                'priority' => $priority ?? $this->defaultPriority
+            ];
+
+            return $this;
+        }
+
+        /**
+         * Add multiple static pages at once
+         */
+        public function addStaticPages(array $pages): self
+        {
+            foreach ($pages as $page) {
                 $this->addUrl(
-                    $page['url'] ?? '',
-                    $page['last_modified'] ?? null,
+                    $page['url'],
+                    $page['lastmod'] ?? null,
                     $page['change_freq'] ?? null,
                     $page['priority'] ?? null
                 );
             }
-        }
 
-        return $this;
-    }
-
-    /**
-     * Add model-based URLs (e.g., blog posts, products)
-     * Now accepts model class name as string for easier use in routes/controllers
-     */
-    public function addModels(string $modelClass, string $routeName, array $options = []): self
-    {
-        if (!class_exists($modelClass)) {
             return $this;
         }
 
-        $models = $modelClass::query();
-        
-        // Apply any additional query constraints
-        if (isset($options['where'])) {
-            $models->where($options['where']);
-        }
-        
-        // Apply ordering
-        if (isset($options['orderBy'])) {
-            $models->orderBy($options['orderBy']);
-        }
-        
-        // Apply limit
-        if (isset($options['limit'])) {
-            $models->limit($options['limit']);
-        }
+        /**
+         * Add a model collection to the sitemap
+         */
+        public function addModelCollection(
+            string $modelClass,
+            string $routeName,
+            string $changeFreq = 'monthly',
+            float $priority = 0.7,
+            array $constraints = [],
+            string $slugColumn = null
+        ): self {
+            $options = [
+                'change_freq' => $changeFreq,
+                'priority' => $priority,
+                'where' => $constraints
+            ];
 
-        $models = $models->get();
-
-        foreach ($models as $model) {
-            // Generate route parameter (slug, ID, or custom)
-            $routeParameter = $this->generateRouteParameter($model, $options);
-            $url = route($routeName, $routeParameter);
-            $lastModified = $model->updated_at ?? $model->created_at;
-            
-            $this->addUrl(
-                $url,
-                $lastModified ? $lastModified->toISOString() : null,
-                $options['change_freq'] ?? 'monthly',
-                $options['priority'] ?? 0.7
-            );
-        }
-
-        return $this;
-    }
-
-    /**
-     * Generate route parameter for the model
-     */
-    protected function generateRouteParameter($model, array $options): string
-    {
-        // If slug column is specified and exists, use it
-        if (isset($options['slug_column']) && isset($model->{$options['slug_column']})) {
-            return $model->{$options['slug_column']};
-        }
-        
-        // If title column exists, generate slug from it
-        if (isset($options['title_column']) && isset($model->{$options['title_column']})) {
-            return $this->generateSlug($model->{$options['title_column']});
-        }
-        
-        // Auto-detect title columns and generate slugs
-        $titleColumn = $this->detectTitleColumn($model);
-        if ($titleColumn && isset($model->{$titleColumn})) {
-            return $this->generateSlug($model->{$titleColumn});
-        }
-        
-        // Fallback to model ID
-        return $model;
-    }
-
-    /**
-     * Auto-detect title column in the model
-     */
-    protected function detectTitleColumn($model): ?string
-    {
-        $possibleColumns = ['title', 'name', 'headline', 'subject', 'label'];
-        
-        foreach ($possibleColumns as $column) {
-            if (isset($model->{$column})) {
-                return $column;
+            if ($slugColumn) {
+                $options['slug_column'] = $slugColumn;
             }
-        }
-        
-        return null;
-    }
 
-    /**
-     * Generate a URL-friendly slug from text
-     */
-    protected function generateSlug(string $text): string
-    {
-        return Str::slug($text);
-    }
-
-    /**
-     * Quick method to add models with common options
-     * Perfect for use in routes and controllers
-     */
-    public function addModelCollection(
-        string $modelClass, 
-        string $routeName, 
-        string $changeFreq = 'monthly',
-        float $priority = 0.7,
-        array $constraints = [],
-        string $slugColumn = null,
-        string $titleColumn = null
-    ): self {
-        $options = [
-            'change_freq' => $changeFreq,
-            'priority' => $priority,
-            'where' => $constraints
-        ];
-        
-        if ($slugColumn) {
-            $options['slug_column'] = $slugColumn;
+            return $this->addModels($modelClass, $routeName, $options);
         }
-        
-        if ($titleColumn) {
-            $options['title_column'] = $titleColumn;
-        }
-        
-        return $this->addModels($modelClass, $routeName, $options);
-    }
 
-    /**
-     * Add multiple model collections at once
-     * Great for bulk sitemap generation
-     */
-    public function addModelCollections(array $collections): self
-    {
-        foreach ($collections as $collection) {
-            if (isset($collection['model']) && isset($collection['route'])) {
+        /**
+         * Add multiple model collections at once
+         */
+        public function addModelCollections(array $collections): self
+        {
+            foreach ($collections as $collection) {
                 $this->addModelCollection(
                     $collection['model'],
                     $collection['route'],
                     $collection['change_freq'] ?? 'monthly',
                     $collection['priority'] ?? 0.7,
-                    $collection['constraints'] ?? [],
-                    $collection['slug_column'] ?? null,
-                    $collection['title_column'] ?? null
+                    $collection['where'] ?? [],
+                    $collection['slug_column'] ?? null
                 );
             }
+
+            return $this;
         }
 
-        return $this;
-    }
-
-    /**
-     * Set excluded routes
-     */
-    public function setExcludedRoutes(array $routes): self
-    {
-        $this->excludedRoutes = $routes;
-        return $this;
-    }
-
-    /**
-     * Set default priority
-     */
-    public function setDefaultPriority(float $priority): self
-    {
-        $this->defaultPriority = $priority;
-        return $this;
-    }
-
-    /**
-     * Set default change frequency
-     */
-    public function setDefaultChangeFreq(string $changeFreq): self
-    {
-        $this->defaultChangeFreq = $changeFreq;
-        return $this;
-    }
-
-    /**
-     * Generate the XML sitemap
-     */
-    public function generate(): string
-    {
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-
-        foreach ($this->urls as $url) {
-            $xml .= '  <url>' . "\n";
-            $xml .= '    <loc>' . htmlspecialchars($url['url']) . '</loc>' . "\n";
-            
-            if ($url['last_modified']) {
-                $xml .= '    <lastmod>' . $url['last_modified'] . '</lastmod>' . "\n";
+        /**
+         * Add models to the sitemap
+         */
+        protected function addModels(string $modelClass, string $routeName, array $options = []): self
+        {
+            if (!class_exists($modelClass)) {
+                return $this;
             }
-            
-            if ($url['change_freq']) {
-                $xml .= '    <changefreq>' . $url['change_freq'] . '</changefreq>' . "\n";
+
+            $query = $modelClass::query();
+
+            // Apply constraints
+            if (isset($options['where']) && is_array($options['where'])) {
+                foreach ($options['where'] as $column => $value) {
+                    if (is_array($value) && count($value) === 2) {
+                        // Handle comparison operators: ['>', 100]
+                        $query->where($column, $value[0], $value[1]);
+                    } else {
+                        $query->where($column, $value);
+                    }
+                }
             }
-            
-            if ($url['priority'] !== null) {
-                $xml .= '    <priority>' . number_format($url['priority'], 1) . '</priority>' . "\n";
+
+            $models = $query->get();
+
+            foreach ($models as $model) {
+                // Use slug column if specified, otherwise use model ID
+                $routeParameter = isset($options['slug_column']) ? $model->{$options['slug_column']} : $model;
+                $url = $this->generateRouteUrl($routeName, $routeParameter);
+                $lastModified = $model->updated_at ?? $model->created_at;
+
+                $this->addUrl(
+                    $url,
+                    $lastModified ? $lastModified->toISOString() : null,
+                    $options['change_freq'] ?? 'monthly',
+                    $options['priority'] ?? 0.7
+                );
             }
-            
-            $xml .= '  </url>' . "\n";
+
+            return $this;
         }
 
-        $xml .= '</urlset>';
-
-        return $xml;
-    }
-
-    /**
-     * Generate and save the sitemap to a file
-     */
-    public function save(string $path = null): bool
-    {
-        $path = $path ?? public_path('sitemap.xml');
-        
-        try {
-            File::put($path, $this->generate());
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Generate and return the sitemap as a response
-     */
-    public function response(string $filename = 'sitemap.xml')
-    {
-        return response($this->generate(), 200, [
-            'Content-Type' => 'application/xml',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ]);
-    }
-
-    /**
-     * Get the current URLs array
-     */
-    public function getUrls(): array
-    {
-        return $this->urls;
-    }
-
-    /**
-     * Clear all URLs
-     */
-    public function clear(): self
-    {
-        $this->urls = [];
-        return $this;
-    }
-
-    /**
-     * Check if a route should be included in the sitemap
-     */
-    protected function shouldIncludeRoute($route, array $excludedRoutes): bool
-    {
-        // Skip routes without GET method
-        if (!in_array('GET', $route->methods())) {
-            return false;
+        /**
+         * Generate route URL safely
+         */
+        protected function generateRouteUrl(string $routeName, $parameter): string
+        {
+            try {
+                if (function_exists('route')) {
+                    return route($routeName, $parameter);
+                }
+                // Fallback if route helper doesn't exist
+                return "/{$routeName}/" . (is_object($parameter) ? $parameter->id : $parameter);
+            } catch (Exception $e) {
+                // Fallback URL generation
+                return "/{$routeName}/" . (is_object($parameter) ? $parameter->id : $parameter);
+            }
         }
 
-        // Skip routes with parameters
-        if (str_contains($route->uri(), '{')) {
-            return false;
+        /**
+         * Add all public routes to the sitemap
+         */
+        public function addRoutes(): self
+        {
+            if (!function_exists('Route') || !method_exists(Route::class, 'getRoutes')) {
+                return $this;
+            }
+
+            $routes = Route::getRoutes();
+
+            foreach ($routes as $route) {
+                if ($this->shouldIncludeRoute($route)) {
+                    $this->addUrl($route->uri());
+                }
+            }
+
+            return $this;
         }
 
-        // Skip excluded routes
-        foreach ($excludedRoutes as $pattern) {
-            if (fnmatch($pattern, $route->uri())) {
+        /**
+         * Check if a route should be included in the sitemap
+         */
+        protected function shouldIncludeRoute($route): bool
+        {
+            $uri = $route->uri();
+
+            // Skip routes with parameters
+            if (strpos($uri, '{') !== false) {
                 return false;
             }
+
+            // Check excluded patterns
+            foreach ($this->excludedRoutes as $pattern) {
+                if (fnmatch($pattern, $uri)) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
-        return true;
-    }
+        /**
+         * Set excluded route patterns
+         */
+        public function setExcludedRoutes(array $patterns): self
+        {
+            $this->excludedRoutes = $patterns;
+            return $this;
+        }
 
-    /**
-     * Normalize URL to ensure it's absolute
-     */
-    protected function normalizeUrl(string $url): string
-    {
-        if (filter_var($url, FILTER_VALIDATE_URL)) {
+        /**
+         * Set default priority for URLs
+         */
+        public function setDefaultPriority(float $priority): self
+        {
+            $this->defaultPriority = $priority;
+            return $this;
+        }
+
+        /**
+         * Set default change frequency for URLs
+         */
+        public function setDefaultChangeFreq(string $changeFreq): self
+        {
+            $this->defaultChangeFreq = $changeFreq;
+            return $this;
+        }
+
+        /**
+         * Normalize URL format
+         */
+        protected function normalizeUrl(string $url): string
+        {
+            $url = trim($url);
+            
+            // Ensure URL starts with protocol or slash
+            if (!preg_match('/^https?:\/\//', $url) && !preg_match('/^\//', $url)) {
+                $url = '/' . $url;
+            }
+
             return $url;
         }
 
-        if (str_starts_with($url, '/')) {
-            return rtrim($this->baseUrl, '/') . $url;
+        /**
+         * Generate XML sitemap
+         */
+        public function generate(): string
+        {
+            $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+            $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+
+            foreach ($this->urls as $url) {
+                $xml .= '  <url>' . "\n";
+                $xml .= '    <loc>' . htmlspecialchars($url['url']) . '</loc>' . "\n";
+                
+                if ($url['lastmod']) {
+                    $xml .= '    <lastmod>' . htmlspecialchars($url['lastmod']) . '</lastmod>' . "\n";
+                }
+                
+                $xml .= '    <changefreq>' . htmlspecialchars($url['change_freq']) . '</changefreq>' . "\n";
+                $xml .= '    <priority>' . number_format($url['priority'], 1) . '</priority>' . "\n";
+                $xml .= '  </url>' . "\n";
+            }
+
+            $xml .= '</urlset>';
+
+            return $xml;
         }
 
-        return rtrim($this->baseUrl, '/') . '/' . ltrim($url, '/');
-    }
+        /**
+         * Generate sitemap index for multiple sitemaps
+         */
+        public function generateIndex(array $sitemaps): string
+        {
+            $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+            $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 
-    /**
-     * Generate a sitemap index file for multiple sitemaps
-     */
-    public static function generateIndex(array $sitemaps): string
-    {
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-        $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+            foreach ($sitemaps as $sitemap) {
+                $xml .= '  <sitemap>' . "\n";
+                $xml .= '    <loc>' . htmlspecialchars($sitemap) . '</loc>' . "\n";
+                $xml .= '    <lastmod>' . date('c') . '</lastmod>' . "\n";
+                $xml .= '  </sitemap>' . "\n";
+            }
 
-        foreach ($sitemaps as $sitemap) {
-            $xml .= '  <sitemap>' . "\n";
-            $xml .= '    <loc>' . htmlspecialchars($sitemap['url']) . '</loc>' . "\n";
-            
-            if (isset($sitemap['last_modified'])) {
-                $xml .= '    <lastmod>' . $sitemap['last_modified'] . '</lastmod>' . "\n";
+            $xml .= '</sitemapindex>';
+
+            return $xml;
+        }
+
+        /**
+         * Return as HTTP response
+         */
+        public function response()
+        {
+            if (function_exists('response')) {
+                return response($this->generate(), 200, [
+                    'Content-Type' => 'application/xml'
+                ]);
             }
             
-            $xml .= '  </sitemap>' . "\n";
+            // Fallback if response helper doesn't exist
+            header('Content-Type: application/xml');
+            echo $this->generate();
+            exit;
         }
 
-        $xml .= '</sitemapindex>';
-
-        return $xml;
-    }
-
-    /**
-     * Create a sitemap with common Laravel routes
-     */
-    public static function createDefault(): self
-    {
-        $helper = new self();
-        
-        // Add common static pages
-        $helper->addStaticPages([
-            ['url' => '/', 'priority' => 1.0, 'change_freq' => 'daily'],
-            ['url' => '/about', 'priority' => 0.8, 'change_freq' => 'monthly'],
-            ['url' => '/contact', 'priority' => 0.6, 'change_freq' => 'monthly'],
-            ['url' => '/privacy-policy', 'priority' => 0.4, 'change_freq' => 'yearly'],
-            ['url' => '/terms-of-service', 'priority' => 0.4, 'change_freq' => 'yearly'],
-        ]);
-
-        // Add public routes
-        $helper->addRoutes();
-
-        return $helper;
-    }
-
-    /**
-     * Quick sitemap generation for common use cases
-     * Perfect for routes and controllers
-     */
-    public static function quickGenerate(array $models = [], array $staticPages = []): self
-    {
-        $helper = new self();
-        
-        // Add static pages
-        if (!empty($staticPages)) {
-            $helper->addStaticPages($staticPages);
+        /**
+         * Save sitemap to file
+         */
+        public function save(string $filePath): bool
+        {
+            $content = $this->generate();
+            $directory = dirname($filePath);
+            
+            if (!is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            
+            return file_put_contents($filePath, $content) !== false;
         }
-        
-        // Add model collections
-        if (!empty($models)) {
-            $helper->addModelCollections($models);
+
+        /**
+         * Get all URLs
+         */
+        public function getUrls(): array
+        {
+            return $this->urls;
         }
-        
-        // Add public routes
-        $helper->addRoutes();
-        
-        return $helper;
+
+        /**
+         * Clear all URLs
+         */
+        public function clear(): self
+        {
+            $this->urls = [];
+            return $this;
+        }
+
+        /**
+         * Get URL count
+         */
+        public function count(): int
+        {
+            return count($this->urls);
+        }
+
+        /**
+         * Check if sitemap is empty
+         */
+        public function isEmpty(): bool
+        {
+            return empty($this->urls);
+        }
     }
 }
 
+// Helper functions for easier usage
+if (!function_exists('sitemap')) {
+    /**
+     * Create a new SitemapHelper instance
+     */
+    function sitemap(): SitemapHelper
+    {
+        return new SitemapHelper();
+    }
+}
+
+if (!function_exists('sitemap_quick')) {
+    /**
+     * Quick generate sitemap with models and static pages
+     */
+    function sitemap_quick(array $models = [], array $staticPages = []): SitemapHelper
+    {
+        return SitemapHelper::quickGenerate($models, $staticPages);
+    }
+}
