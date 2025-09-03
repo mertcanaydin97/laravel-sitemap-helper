@@ -1,40 +1,31 @@
-# Laravel Sitemap Helper - Standalone Version
+# Laravel Sitemap Helper
 
-A simple, powerful Laravel sitemap helper that generates XML sitemaps with SEO-friendly URLs, model collections, and static pages. **Works seamlessly with Laravel, no composer autoload required!**
+A powerful Laravel helper to generate XML sitemaps with SEO-friendly URLs, model collections, and static pages. **Built specifically for Laravel, no composer autoload required!**
 
 ## 🚀 Features
 
-- ✅ **Laravel Native** - Built specifically for Laravel
+- ✅ **Laravel Native** - Built specifically for Laravel projects
 - ✅ **Standalone** - No composer autoload needed
 - ✅ **SEO-friendly URLs** - Support for slug columns
-- ✅ **Model collections** - Add models with constraints
+- ✅ **Model collections** - Add Laravel models with constraints
 - ✅ **Static pages** - Easy static page management
 - ✅ **Route generation** - Automatic public route inclusion
 - ✅ **XML generation** - Proper sitemap protocol
-- ✅ **File saving** - Save to any location
+- ✅ **File saving** - Save to Laravel public directory
 - ✅ **Helper functions** - Simple one-liner usage
 - ✅ **Comprehensive testing** - Built-in test runner
 
 ## 📦 Installation
 
-### **Option 1: Laravel Integration (Recommended)**
+### **Laravel Integration (Recommended)**
 1. Download `SitemapHelper.php` to your Laravel project
-2. Place in `app/Helpers/` or any directory
+2. Place in `app/Helpers/` directory
 3. Include it where needed: `require_once base_path('app/Helpers/SitemapHelper.php');`
 4. **That's it!** No composer, no autoload, no setup!
 
-### **Option 2: Direct Download**
-1. Download `SitemapHelper.php`
-2. Include it in your project: `require_once 'SitemapHelper.php';`
-3. Use immediately
-
-### **Option 3: Copy & Paste**
-1. Copy the `SitemapHelper` class into your project
-2. Use it immediately
-
 ## 🎯 Quick Start
 
-### **Laravel Route Usage (Recommended)**
+### **Laravel Route Usage**
 ```php
 <?php
 // routes/web.php
@@ -45,9 +36,9 @@ Route::get('/sitemap.xml', function () {
         ['model' => 'App\Models\Post', 'route' => 'posts.show', 'change_freq' => 'weekly', 'priority' => 0.8, 'slug_column' => 'slug'],
         ['model' => 'App\Models\Product', 'route' => 'products.show', 'change_freq' => 'daily', 'priority' => 0.9, 'slug_column' => 'slug'],
     ], [
-        ['url' => '/', 'priority' => 1.0, 'change_freq' => 'daily'],
-        ['url' => '/about', 'priority' => 0.8, 'change_freq' => 'monthly'],
-        ['url' => '/contact', 'priority' => 0.6, 'change_freq' => 'monthly'],
+        ['url' => route('home'), 'priority' => 1.0, 'change_freq' => 'daily'],
+        ['url' => route('about'), 'priority' => 0.8, 'change_freq' => 'monthly'],
+        ['url' => route('contact'), 'priority' => 0.6, 'change_freq' => 'monthly'],
     ])->response();
 });
 ```
@@ -66,14 +57,14 @@ class SitemapController extends Controller
         
         $sitemap = new \SitemapHelper();
         
-        // Add static pages
+        // Add static pages using Laravel routes
         $sitemap->addStaticPages([
-            ['url' => '/', 'priority' => 1.0, 'change_freq' => 'daily'],
-            ['url' => '/about', 'priority' => 0.8, 'change_freq' => 'monthly'],
-            ['url' => '/contact', 'priority' => 0.6, 'change_freq' => 'monthly'],
+            ['url' => route('home'), 'priority' => 1.0, 'change_freq' => 'daily'],
+            ['url' => route('about'), 'priority' => 0.8, 'change_freq' => 'monthly'],
+            ['url' => route('contact'), 'priority' => 0.6, 'change_freq' => 'monthly'],
         ]);
         
-        // Add model collections
+        // Add Laravel models with slug columns
         $sitemap->addModelCollection('App\Models\Post', 'posts.show', 'weekly', 0.8, [
             'status' => 'published'
         ], 'slug');
@@ -103,7 +94,7 @@ class GenerateSitemap extends Command
         $sitemap = \SitemapHelper::quickGenerate([
             ['model' => 'App\Models\Post', 'route' => 'posts.show', 'change_freq' => 'weekly', 'priority' => 0.8, 'slug_column' => 'slug'],
         ], [
-            ['url' => '/', 'priority' => 1.0, 'change_freq' => 'daily'],
+            ['url' => route('home'), 'priority' => 1.0, 'change_freq' => 'daily'],
         ]);
         
         $sitemap->save(public_path('sitemap.xml'));
@@ -126,8 +117,8 @@ protected function schedule(Schedule $schedule)
             ['model' => 'App\Models\Post', 'route' => 'posts.show', 'change_freq' => 'weekly', 'priority' => 0.8, 'slug_column' => 'slug'],
             ['model' => 'App\Models\Product', 'route' => 'products.show', 'change_freq' => 'daily', 'priority' => 0.9, 'slug_column' => 'slug'],
         ], [
-            ['url' => '/', 'priority' => 1.0, 'change_freq' => 'daily'],
-            ['url' => '/about', 'priority' => 0.8, 'change_freq' => 'monthly'],
+            ['url' => route('home'), 'priority' => 1.0, 'change_freq' => 'daily'],
+            ['url' => route('about'), 'priority' => 0.8, 'change_freq' => 'monthly'],
         ]);
         
         $sitemap->save(public_path('sitemap.xml'));
@@ -135,7 +126,7 @@ protected function schedule(Schedule $schedule)
 }
 ```
 
-## 🌟 Laravel-Specific Examples
+## 🌟 Laravel Sitemap Examples
 
 ### **E-Commerce Laravel App**
 ```php
@@ -144,13 +135,13 @@ protected function schedule(Schedule $schedule)
 require_once base_path('app/Helpers/SitemapHelper.php');
 
 $sitemap = \SitemapHelper::quickGenerate([
-    // Products with slug columns
+    // Laravel models with slug columns
     ['model' => 'App\Models\Product', 'route' => 'products.show', 'change_freq' => 'daily', 'priority' => 0.9, 'slug_column' => 'slug'],
     ['model' => 'App\Models\Category', 'route' => 'categories.show', 'change_freq' => 'weekly', 'priority' => 0.7, 'slug_column' => 'slug'],
     ['model' => 'App\Models\Brand', 'route' => 'brands.show', 'change_freq' => 'monthly', 'priority' => 0.6, 'slug_column' => 'slug'],
     ['model' => 'App\Models\Tag', 'route' => 'tags.show', 'change_freq' => 'monthly', 'priority' => 0.5, 'slug_column' => 'slug'],
 ], [
-    // Static pages
+    // Laravel routes
     ['url' => route('home'), 'priority' => 1.0, 'change_freq' => 'daily'],
     ['url' => route('shop'), 'priority' => 0.9, 'change_freq' => 'daily'],
     ['url' => route('about'), 'priority' => 0.7, 'change_freq' => 'monthly'],
@@ -177,7 +168,7 @@ $sitemap->addStaticPages([
     ['url' => route('contact'), 'priority' => 0.6, 'change_freq' => 'monthly'],
 ]);
 
-// Blog posts with Laravel models
+// Laravel models with slug columns
 $sitemap->addModelCollection('App\Models\Post', 'posts.show', 'weekly', 0.8, [
     'status' => 'published'
 ], 'slug');
@@ -186,7 +177,7 @@ $sitemap->addModelCollection('App\Models\Post', 'posts.show', 'weekly', 0.8, [
 $sitemap->addModelCollection('App\Models\Category', 'categories.show', 'monthly', 0.6, [], 'slug');
 $sitemap->addModelCollection('App\Models\Tag', 'tags.show', 'monthly', 0.5, [], 'slug');
 
-// Generate and save
+// Generate and save to Laravel public directory
 $sitemap->save(public_path('sitemap.xml'));
 ```
 
@@ -215,6 +206,35 @@ $sitemap->addStaticPages([
 
 // Add public routes (excluding admin/API)
 $sitemap->addRoutes();
+
+// Save to Laravel public directory
+$sitemap->save(public_path('sitemap.xml'));
+```
+
+### **Portfolio Laravel App**
+```php
+<?php
+// In your Laravel portfolio controller
+require_once base_path('app/Helpers/SitemapHelper.php');
+
+$sitemap = new \SitemapHelper();
+
+// Static pages using Laravel routes
+$sitemap->addStaticPages([
+    ['url' => route('home'), 'priority' => 1.0, 'change_freq' => 'daily'],
+    ['url' => route('portfolio'), 'priority' => 0.9, 'change_freq' => 'weekly'],
+    ['url' => route('about'), 'priority' => 0.8, 'change_freq' => 'monthly'],
+    ['url' => route('services'), 'priority' => 0.8, 'change_freq' => 'monthly'],
+    ['url' => route('contact'), 'priority' => 0.7, 'change_freq' => 'monthly'],
+]);
+
+// Portfolio projects with Laravel models
+$sitemap->addModelCollection('App\Models\Project', 'projects.show', 'weekly', 0.8, [
+    'is_published' => true
+], 'slug');
+
+// Project categories
+$sitemap->addModelCollection('App\Models\ProjectCategory', 'project-categories.show', 'monthly', 0.7, [], 'slug');
 
 // Save to Laravel public directory
 $sitemap->save(public_path('sitemap.xml'));
@@ -276,20 +296,20 @@ $sitemap->setExcludedRoutes([
 ### **Core Methods**
 - `addUrl($url, $lastmod, $changeFreq, $priority)` - Add single URL
 - `addStaticPages($pages)` - Add multiple static pages
-- `addModelCollection($modelClass, $routeName, $changeFreq, $priority, $constraints, $slugColumn)` - Add model collection
-- `addModelCollections($collections)` - Add multiple model collections
-- `addRoutes()` - Add all public routes
+- `addModelCollection($modelClass, $routeName, $changeFreq, $priority, $constraints, $slugColumn)` - Add Laravel model collection
+- `addModelCollections($collections)` - Add multiple Laravel model collections
+- `addRoutes()` - Add all public Laravel routes
 
 ### **Configuration Methods**
 - `setDefaultPriority($priority)` - Set default priority (0.0 - 1.0)
 - `setDefaultChangeFreq($changeFreq)` - Set default change frequency
-- `setExcludedRoutes($patterns)` - Set excluded route patterns
+- `setExcludedRoutes($patterns)` - Set excluded Laravel route patterns
 
 ### **Output Methods**
 - `generate()` - Generate XML string
 - `generateIndex($sitemaps)` - Generate sitemap index
-- `response()` - Return as HTTP response
-- `save($filePath)` - Save to file
+- `response()` - Return as Laravel HTTP response
+- `save($filePath)` - Save to Laravel file system
 - `getUrls()` - Get all URLs array
 
 ### **Utility Methods**
@@ -299,56 +319,7 @@ $sitemap->setExcludedRoutes([
 
 ### **Static Methods**
 - `createDefault()` - Create default instance
-- `quickGenerate($models, $staticPages)` - Quick generation
-
-## 🌟 PHP-Only Usage (Non-Laravel)
-
-### **Basic PHP Usage**
-```php
-<?php
-require_once 'SitemapHelper.php';
-
-// Create sitemap
-$sitemap = new SitemapHelper();
-
-// Add static pages
-$sitemap->addStaticPages([
-    ['url' => '/', 'priority' => 1.0, 'change_freq' => 'daily'],
-    ['url' => '/about', 'priority' => 0.8, 'change_freq' => 'monthly'],
-    ['url' => '/contact', 'priority' => 0.6, 'change_freq' => 'monthly'],
-]);
-
-// Generate XML
-echo $sitemap->generate();
-```
-
-### **One-Liner PHP Usage**
-```php
-<?php
-require_once 'SitemapHelper.php';
-
-// Generate sitemap in one line
-$sitemap = SitemapHelper::quickGenerate([], [
-    ['url' => '/', 'priority' => 1.0, 'change_freq' => 'daily'],
-    ['url' => '/about', 'priority' => 0.8, 'change_freq' => 'monthly'],
-]);
-
-// Save to file
-$sitemap->save('sitemap.xml');
-```
-
-### **Helper Functions in PHP**
-```php
-<?php
-require_once 'SitemapHelper.php';
-
-// Using helper functions
-$sitemap = sitemap(); // Creates new instance
-$sitemap->addUrl('/blog', '2024-01-01', 'weekly', 0.7);
-
-// Quick generate with helper
-$sitemap = sitemap_quick([], [['url' => '/', 'priority' => 1.0]]);
-```
+- `quickGenerate($models, $staticPages)` - Quick generation for Laravel
 
 ## 📊 Priority Guide
 
@@ -383,7 +354,7 @@ php simple-test.php
 - ✅ **Clear pass/fail results**
 - ✅ **Production-ready validation**
 
-## 📁 File Structure
+## 📁 Laravel File Structure
 
 ```
 your-laravel-project/
@@ -415,16 +386,16 @@ if (app()->environment('production')) {
     require_once base_path('app/Helpers/SitemapHelper.php');
     
     $sitemap = \SitemapHelper::quickGenerate([
-        // Production models...
+        // Production Laravel models...
     ], [
-        // Production static pages...
+        // Production Laravel routes...
     ]);
     
     $sitemap->save(public_path('sitemap.xml'));
 }
 ```
 
-### **Multiple Sitemaps for Large Sites**
+### **Multiple Sitemaps for Large Laravel Sites**
 ```php
 <?php
 // Generate separate sitemaps for different sections
@@ -438,7 +409,7 @@ $productsSitemap = \SitemapHelper::quickGenerate([
 ], []);
 $productsSitemap->save(public_path('sitemap-products.xml'));
 
-// Generate sitemap index
+// Generate sitemap index using Laravel URL helper
 $indexSitemap = new \SitemapHelper();
 $index = $indexSitemap->generateIndex([
     url('sitemap-posts.xml'),
@@ -455,13 +426,37 @@ $sitemap = Cache::remember('sitemap', 3600, function () {
     require_once base_path('app/Helpers/SitemapHelper.php');
     
     return \SitemapHelper::quickGenerate([
-        // Your models...
+        // Your Laravel models...
     ], [
-        // Your static pages...
+        // Your Laravel routes...
     ])->generate();
 });
 
 return response($sitemap, 200, ['Content-Type' => 'application/xml']);
+```
+
+### **Laravel Queue Integration**
+```php
+<?php
+// Queue sitemap generation for large sites
+class GenerateSitemapJob implements ShouldQueue
+{
+    public function handle()
+    {
+        require_once base_path('app/Helpers/SitemapHelper.php');
+        
+        $sitemap = \SitemapHelper::quickGenerate([
+            // Your Laravel models...
+        ], [
+            // Your Laravel routes...
+        ]);
+        
+        $sitemap->save(public_path('sitemap.xml'));
+    }
+}
+
+// Dispatch the job
+GenerateSitemapJob::dispatch();
 ```
 
 ## 🌟 Why Laravel-First + Standalone?
@@ -474,11 +469,12 @@ return response($sitemap, 200, ['Content-Type' => 'application/xml']);
 - **Immediate usage** - Start generating sitemaps right away
 - **Production ready** - Comprehensive testing included
 - **Laravel integration** - Works seamlessly with routes, controllers, commands
+- **Laravel helpers** - Uses `route()`, `url()`, `public_path()` helpers
 
 ## 📝 Requirements
 
 - **PHP 7.4+** (for type hints)
-- **Laravel** (recommended for full functionality)
+- **Laravel** (required for full functionality)
 - **No external packages** required
 
 ## 🤝 Contributing
@@ -496,7 +492,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🆘 Support
 
 - **Issues**: Create an issue on GitHub
-- **Questions**: Check the usage examples
+- **Questions**: Check the Laravel usage examples
 - **Testing**: Run `php simple-test.php`
 
 ## 🎉 That's It!
@@ -505,6 +501,6 @@ Your Laravel Sitemap Helper is ready to use! Just:
 
 1. **Download** `SitemapHelper.php`
 2. **Include** it in your Laravel project
-3. **Start generating** sitemaps immediately
+3. **Start generating** Laravel sitemaps immediately
 
-**Perfect for Laravel, works everywhere - no composer, no autoload, no setup!** 🚀
+**Built specifically for Laravel - no composer, no autoload, no setup!** 🚀
